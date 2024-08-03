@@ -63,26 +63,32 @@ if (!fs.existsSync(sessionDir)) {
     fs.mkdirSync(sessionDir, { recursive: true });
 }
 
-async function downloadSessionData() {
+async function decodeSessionId(encodedId) {
+    if (encodedId.startsWith("Byte;;;")) {
+        encodedId = encodedId.substring(7);
+    }
+    const buffer = Buffer.from(encodedId, 'base64');
+    const decodedId = buffer.toString('utf-8');
+    return decodedId;
+}
+
+async function saveSessionDataLocally() {
     if (!config.SESSION_ID) {
         console.error('Please add your session to SESSION_ID env !!');
         process.exit(1);
     }
-    const sessdata = config.SESSION_ID.split("Ethix-MD&")[1];
-    const url = `https://pastebin.com/raw/${sessdata}`;
     try {
-        const response = await axios.get(url);
-        const data = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-        await fs.promises.writeFile(credsPath, data);
+        const decodedSession = await decodeSessionId(config.SESSION_ID);
+        await fs.promises.writeFile(credsPath, decodedSession);
         console.log("🔒 Session Successfully Loaded !!");
     } catch (error) {
-        console.error('Failed to download session data:', error);
+        console.error('Failed to decode and save session data:', error);
         process.exit(1);
     }
 }
 
 if (!fs.existsSync(credsPath)) {
-    downloadSessionData();
+    saveSessionDataLocally();
 }
 
 async function start() {
